@@ -33,6 +33,7 @@
 
 #include "diffdrive_arduino/arduino_comms.hpp"
 #include "diffdrive_arduino/wheel.hpp"
+#include "diffdrive_arduino/robot_system.hpp"
 
 namespace diffdrive_arduino
 {
@@ -99,6 +100,7 @@ private:
   Config cfg_;
   Wheel wheel_l_;
   Wheel wheel_r_;
+  Robot robot_sys_;
 };
 
 }  // namespace diffdrive_arduino

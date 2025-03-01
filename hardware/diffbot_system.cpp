@@ -58,56 +58,57 @@ hardware_interface::CallbackReturn DiffDriveArduinoHardware::on_init(
 
   wheel_l_.setup(cfg_.left_wheel_name, cfg_.enc_counts_per_rev);
   wheel_r_.setup(cfg_.right_wheel_name, cfg_.enc_counts_per_rev);
+  robot_sys_.setup("robot_system");
 
 
-  for (const hardware_interface::ComponentInfo & joint : info_.joints)
-  {
-    // DiffBotSystem has exactly two states and one command interface on each joint
-    if (joint.command_interfaces.size() != 1)
-    {
-      RCLCPP_FATAL(
-        rclcpp::get_logger("DiffDriveArduinoHardware"),
-        "Joint '%s' has %zu command interfaces found. 1 expected.", joint.name.c_str(),
-        joint.command_interfaces.size());
-      return hardware_interface::CallbackReturn::ERROR;
-    }
+  // for (const hardware_interface::ComponentInfo & joint : info_.joints)
+  // {
+  //   // DiffBotSystem has exactly two states and one command interface on each joint
+  //   if (joint.command_interfaces.size() != 1)
+  //   {
+  //     RCLCPP_FATAL(
+  //       rclcpp::get_logger("DiffDriveArduinoHardware"),
+  //       "Joint '%s' has %zu command interfaces found. 1 expected.", joint.name.c_str(),
+  //       joint.command_interfaces.size());
+  //     return hardware_interface::CallbackReturn::ERROR;
+  //   }
 
-    if (joint.command_interfaces[0].name != hardware_interface::HW_IF_VELOCITY)
-    {
-      RCLCPP_FATAL(
-        rclcpp::get_logger("DiffDriveArduinoHardware"),
-        "Joint '%s' have %s command interfaces found. '%s' expected.", joint.name.c_str(),
-        joint.command_interfaces[0].name.c_str(), hardware_interface::HW_IF_VELOCITY);
-      return hardware_interface::CallbackReturn::ERROR;
-    }
+  //   if (joint.command_interfaces[0].name != hardware_interface::HW_IF_VELOCITY)
+  //   {
+  //     RCLCPP_FATAL(
+  //       rclcpp::get_logger("DiffDriveArduinoHardware"),
+  //       "Joint '%s' have %s command interfaces found. '%s' expected.", joint.name.c_str(),
+  //       joint.command_interfaces[0].name.c_str(), hardware_interface::HW_IF_VELOCITY);
+  //     return hardware_interface::CallbackReturn::ERROR;
+  //   }
 
-    if (joint.state_interfaces.size() != 2)
-    {
-      RCLCPP_FATAL(
-        rclcpp::get_logger("DiffDriveArduinoHardware"),
-        "Joint '%s' has %zu state interface. 2 expected.", joint.name.c_str(),
-        joint.state_interfaces.size());
-      return hardware_interface::CallbackReturn::ERROR;
-    }
+  //   if (joint.state_interfaces.size() != 2)
+  //   {
+  //     RCLCPP_FATAL(
+  //       rclcpp::get_logger("DiffDriveArduinoHardware"),
+  //       "Joint '%s' has %zu state interface. 2 expected.", joint.name.c_str(),
+  //       joint.state_interfaces.size());
+  //     return hardware_interface::CallbackReturn::ERROR;
+  //   }
 
-    if (joint.state_interfaces[0].name != hardware_interface::HW_IF_POSITION)
-    {
-      RCLCPP_FATAL(
-        rclcpp::get_logger("DiffDriveArduinoHardware"),
-        "Joint '%s' have '%s' as first state interface. '%s' expected.", joint.name.c_str(),
-        joint.state_interfaces[0].name.c_str(), hardware_interface::HW_IF_POSITION);
-      return hardware_interface::CallbackReturn::ERROR;
-    }
+  //   if (joint.state_interfaces[0].name != hardware_interface::HW_IF_POSITION)
+  //   {
+  //     RCLCPP_FATAL(
+  //       rclcpp::get_logger("DiffDriveArduinoHardware"),
+  //       "Joint '%s' have '%s' as first state interface. '%s' expected.", joint.name.c_str(),
+  //       joint.state_interfaces[0].name.c_str(), hardware_interface::HW_IF_POSITION);
+  //     return hardware_interface::CallbackReturn::ERROR;
+  //   }
 
-    if (joint.state_interfaces[1].name != hardware_interface::HW_IF_VELOCITY)
-    {
-      RCLCPP_FATAL(
-        rclcpp::get_logger("DiffDriveArduinoHardware"),
-        "Joint '%s' have '%s' as second state interface. '%s' expected.", joint.name.c_str(),
-        joint.state_interfaces[1].name.c_str(), hardware_interface::HW_IF_VELOCITY);
-      return hardware_interface::CallbackReturn::ERROR;
-    }
-  }
+  //   if (joint.state_interfaces[1].name != hardware_interface::HW_IF_VELOCITY)
+  //   {
+  //     RCLCPP_FATAL(
+  //       rclcpp::get_logger("DiffDriveArduinoHardware"),
+  //       "Joint '%s' have '%s' as second state interface. '%s' expected.", joint.name.c_str(),
+  //       joint.state_interfaces[1].name.c_str(), hardware_interface::HW_IF_VELOCITY);
+  //     return hardware_interface::CallbackReturn::ERROR;
+  //   }
+  // }
 
   return hardware_interface::CallbackReturn::SUCCESS;
 }
@@ -120,11 +121,27 @@ std::vector<hardware_interface::StateInterface> DiffDriveArduinoHardware::export
     wheel_l_.name, hardware_interface::HW_IF_POSITION, &wheel_l_.pos));
   state_interfaces.emplace_back(hardware_interface::StateInterface(
     wheel_l_.name, hardware_interface::HW_IF_VELOCITY, &wheel_l_.vel));
+  state_interfaces.emplace_back(hardware_interface::StateInterface(
+    wheel_l_.name, "temperature", &wheel_l_.temp));  // New state interface for left wheel temperature
 
   state_interfaces.emplace_back(hardware_interface::StateInterface(
     wheel_r_.name, hardware_interface::HW_IF_POSITION, &wheel_r_.pos));
   state_interfaces.emplace_back(hardware_interface::StateInterface(
     wheel_r_.name, hardware_interface::HW_IF_VELOCITY, &wheel_r_.vel));
+  state_interfaces.emplace_back(hardware_interface::StateInterface(
+    wheel_r_.name, "temperature", &wheel_r_.temp));  // New state interface for right wheel temperature
+
+  // Composite joint "robot_system" state interfaces
+  state_interfaces.emplace_back(hardware_interface::StateInterface(
+    robot_sys_.name, "ultrasonic_sensor_1", &robot_sys_.USS_left_));
+  state_interfaces.emplace_back(hardware_interface::StateInterface(
+    robot_sys_.name, "ultrasonic_sensor_1", &robot_sys_.USS_right_));
+  state_interfaces.emplace_back(hardware_interface::StateInterface(
+    robot_sys_.name, "emergency_stop_state", &robot_sys_.e_state_));
+  state_interfaces.emplace_back(hardware_interface::StateInterface(
+    robot_sys_.name, "mode", &robot_sys_.mode_));
+  state_interfaces.emplace_back(hardware_interface::StateInterface(
+    robot_sys_.name, "battery_level", &robot_sys_.battery_));
 
   return state_interfaces;
 }
@@ -138,6 +155,14 @@ std::vector<hardware_interface::CommandInterface> DiffDriveArduinoHardware::expo
 
   command_interfaces.emplace_back(hardware_interface::CommandInterface(
     wheel_r_.name, hardware_interface::HW_IF_VELOCITY, &wheel_r_.cmd));
+  
+    // Composite joint "robot_system" command interfaces
+  command_interfaces.emplace_back(hardware_interface::CommandInterface(
+    "robot_system", "emergency_stop_cmd", &robot_sys_.e_stop_));
+  command_interfaces.emplace_back(hardware_interface::CommandInterface(
+    "robot_system", "digital_write", &robot_sys_.d_write_));
+  command_interfaces.emplace_back(hardware_interface::CommandInterface(
+    "robot_system", "analog_write", &robot_sys_.a_write_));
 
   return command_interfaces;
 }
@@ -216,6 +241,19 @@ hardware_interface::return_type DiffDriveArduinoHardware::read(
   wheel_r_.pos = wheel_r_.calc_enc_angle();
   wheel_r_.vel = (wheel_r_.pos - pos_prev) / delta_seconds;
 
+  // Read sensor values from Arduino
+  comms_.ping_ultrasonics(robot_sys_.USS_left_, robot_sys_.USS_right_);
+
+  comms_.e_state(robot_sys_.e_state);
+  robot_sys_.e_state = robot_sys_.e_state_;
+
+  comms_.robot_mode(robot_sys_.mode);
+  robot_sys_.mode_ = robot_sys_.mode;
+
+  comms_.read_battery(robot_sys_.battery_);
+
+  comms_.temp_read(wheel_l_.temp, wheel_r_.temp);
+
   return hardware_interface::return_type::OK;
 }
 
@@ -230,6 +268,21 @@ hardware_interface::return_type diffdrive_arduino ::DiffDriveArduinoHardware::wr
   int motor_l_counts_per_loop = wheel_l_.cmd / wheel_l_.rads_per_count / cfg_.loop_rate;
   int motor_r_counts_per_loop = wheel_r_.cmd / wheel_r_.rads_per_count / cfg_.loop_rate;
   comms_.set_motor_values(motor_l_counts_per_loop, motor_r_counts_per_loop);
+  
+  const double epsilon = 1e-6; // Small threshold value
+  if (std::fabs(robot_sys_.e_stop_) > epsilon)
+  {
+      comms_.e_stop();
+  }
+
+  // Handle digital write command
+  if (robot_sys_.d_write != 0)
+    comms_.digital_write(static_cast<int>(robot_sys_.pin_), static_cast<int>(robot_sys_.d_write_));
+
+  // Handle analog write command
+  if (robot_sys_.a_write != 0)
+    comms_.analog_write(static_cast<int>(robot_sys_.pin_), static_cast<int>(robot_sys_.a_write_));
+
   return hardware_interface::return_type::OK;
 }
 
