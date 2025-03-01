@@ -15,7 +15,6 @@ class Wheel
     double pos = 0;
     double vel = 0;
     double rads_per_count = 0;
-    double temp = 0;
 
     Wheel() = default;
 
